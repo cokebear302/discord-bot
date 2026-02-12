@@ -1388,7 +1388,7 @@ async def help_cmd(interaction: discord.Interaction):
 @app_commands.describe(content="운영자에게 보낼 내용을 적어라!")
 async def inquiry_cmd(interaction: discord.Interaction, content: str):
     # ★ [중요] 아까 만든 관리자용 채널 ID를 여기에 붙여넣으세요! (따옴표 없이 숫자만)
-    LOG_CHANNEL_ID = 123456789012345678 
+    LOG_CHANNEL_ID = 1471454391167881296
     
     # 문의 로그를 남길 채널 찾기
     log_channel = client.get_channel(LOG_CHANNEL_ID)
