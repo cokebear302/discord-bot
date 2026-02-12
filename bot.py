@@ -347,7 +347,7 @@ class MiningView(discord.ui.View):
         # 1. 광석 랜덤 뽑기 (확률 조정)
         # weights 숫자가 클수록 잘 나옴 (석탄 > 철 > 금 > 에메랄드 > 다이아)
         ore_names = list(ORES.keys())
-        selected_ore = random.choices(ore_names, weights=[1, 1, 1, 1, 1], k=1)[0]
+        selected_ore = random.choices(ore_names, weights=[40, 30, 20, 8, 2], k=1)[0]
         
         self.ore_name = selected_ore
         self.ore_data = ORES[selected_ore]
