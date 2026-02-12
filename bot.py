@@ -374,17 +374,17 @@ class MiningView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return await interaction.response.send_message("내 광물이다라! 건들지 마라!", ephemeral=True)
         
-        # ★ [핵심 수정] 버튼 누르자마자 "처리 중" 상태로 만듭니다. (실패 방지!)
+        # 1. 일단 "기다려!" 신호를 보냅니다. (이걸 쓰면 response.edit_message는 못 씁니다!)
         await interaction.response.defer()
         
-        # 3. 채굴 로직
+        # 2. 로직 처리
         self.current_hp -= 1
         
         if self.current_hp > 0:
-            # defer를 썼으므로 edit_message 대신 edit_original_response 사용
+            # [중요] defer를 썼으니까 edit_original_response를 써야 합니다!
             await interaction.edit_original_response(embed=self.get_embed(), view=self)
         else:
-            # 깨짐! -> 보상 지급 및 종료
+            # 보상 지급 로직
             m_data = load_data()
             reward = self.ore_data["money"]
             m_data[self.user_id] = m_data.get(self.user_id, 0) + reward
@@ -398,10 +398,11 @@ class MiningView(discord.ui.View):
             )
             embed.set_thumbnail(url="https://emojigraph.org/media/apple/pick_26cf-fe0f.png")
             
-            # 모든 버튼 비활성화
+            # 버튼 끄기
             for child in self.children:
                 child.disabled = True
                 
+            # [중요] 여기도 edit_original_response로 변경!
             await interaction.edit_original_response(embed=embed, view=self)
             self.stop()
 
