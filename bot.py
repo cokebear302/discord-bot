@@ -1382,6 +1382,34 @@ async def help_cmd(interaction: discord.Interaction):
     embed.set_footer(text="자, 이제 모험을 떠나볼까?")
     await interaction.response.send_message(embed=embed)
 
+# ---------------- [추가] 문의/제보 시스템 ----------------
+
+@client.tree.command(name="문의", description="운영자에게 버그를 제보하거나 건의사항을 보냅니다.")
+@app_commands.describe(content="운영자에게 보낼 내용을 적어라!")
+async def inquiry_cmd(interaction: discord.Interaction, content: str):
+    # ★ [중요] 아까 만든 관리자용 채널 ID를 여기에 붙여넣으세요! (따옴표 없이 숫자만)
+    LOG_CHANNEL_ID = 123456789012345678 
+    
+    # 문의 로그를 남길 채널 찾기
+    log_channel = client.get_channel(LOG_CHANNEL_ID)
+    
+    if log_channel is None:
+        return await interaction.response.send_message("문의 채널을 찾을 수 없다라! (개발자에게 문의해라)", ephemeral=True)
+
+    # 1. 유저에게 보내는 답장 (비공개)
+    await interaction.response.send_message("✅ 문의가 접수되었다라! 운영자가 확인 후 처리할 것이다라.", ephemeral=True)
+    
+    # 2. 관리자 채널에 리포트 전송
+    embed = discord.Embed(title="📩 새로운 문의 도착!", color=0xff5500)
+    embed.add_field(name="보낸 사람", value=f"{interaction.user.name} ({interaction.user.id})", inline=False)
+    embed.add_field(name="내용", value=content, inline=False)
+    embed.add_field(name="보낸 곳", value=f"{interaction.guild.name} / {interaction.channel.name}", inline=False)
+    
+    # 현재 시간 표시
+    embed.set_footer(text=f"접수 시간: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    await log_channel.send(embed=embed)
+
 # ---------------- [추가] 데이터 초기화 명령어 ----------------
 
 @client.tree.command(name="초기화", description="[관리자 전용] 모든 유저의 돈과 아이템을 삭제합니다!")
