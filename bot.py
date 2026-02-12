@@ -344,20 +344,19 @@ class MiningView(discord.ui.View):
         super().__init__(timeout=60)
         self.user_id = str(user_id)
         
-        # 1. 광석 랜덤 뽑기 (확률 조정)
-        # weights 숫자가 클수록 잘 나옴 (석탄 > 철 > 금 > 에메랄드 > 다이아)
+        # 1. 광석 랜덤 뽑기
         ore_names = list(ORES.keys())
+        # 확률: 석탄(40) > 철(30) > 금(20) > 에메랄드(8) > 다이아(2)
         selected_ore = random.choices(ore_names, weights=[40, 30, 20, 8, 2], k=1)[0]
         
         self.ore_name = selected_ore
         self.ore_data = ORES[selected_ore]
         
-        # 2. 체력 설정 (무조건 10)
+        # 2. 체력 설정
         self.max_hp = 10
         self.current_hp = 10
 
     def get_embed(self):
-        # 체력바 만들기 (예: 🟥🟥🟥🟥🟥⬜⬜⬜⬜⬜)
         percent = int((self.current_hp / self.max_hp) * 10)
         bar = "🟩" * percent + "⬜" * (10 - percent)
         
@@ -375,12 +374,15 @@ class MiningView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return await interaction.response.send_message("내 광물이다라! 건들지 마라!", ephemeral=True)
         
-        # 3. 채굴 로직 (데미지 무조건 1)
+        # ★ [핵심 수정] 버튼 누르자마자 "처리 중" 상태로 만듭니다. (실패 방지!)
+        await interaction.response.defer()
+        
+        # 3. 채굴 로직
         self.current_hp -= 1
         
         if self.current_hp > 0:
-            # 아직 안 깨짐 -> 임베드 업데이트
-            await interaction.response.edit_message(embed=self.get_embed(), view=self)
+            # defer를 썼으므로 edit_message 대신 edit_original_response 사용
+            await interaction.edit_original_response(embed=self.get_embed(), view=self)
         else:
             # 깨짐! -> 보상 지급 및 종료
             m_data = load_data()
@@ -394,14 +396,16 @@ class MiningView(discord.ui.View):
                 description=f"**{self.ore_name}**을(를) 캐서 **{reward:,}원**을 벌었다라!",
                 color=self.ore_data["color"]
             )
-            embed.set_thumbnail(url="https://emojigraph.org/media/apple/pick_26cf-fe0f.png") # 곡괭이 이미지 (선택)
+            embed.set_thumbnail(url="https://emojigraph.org/media/apple/pick_26cf-fe0f.png")
             
-            # 버튼 비활성화 (모든 버튼 끄기)
+            # 모든 버튼 비활성화
             for child in self.children:
                 child.disabled = True
                 
-            await interaction.response.edit_message(embed=embed, view=self)
+            await interaction.edit_original_response(embed=embed, view=self)
             self.stop()
+
+        
 
 # [2. 수정됨] 상점 선택 로직 (포션은 모달 띄우기, 장비는 즉시 구매)
 # [1. 새로 추가됨] 수량 입력 모달 창 (이게 위에 있어야 합니다!)
