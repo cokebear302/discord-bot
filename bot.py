@@ -78,11 +78,11 @@ POTION_SHOP = {
 }
 
 ORES = {
-    "석탄": {"money": 500, "color": 0x34495e, "emoji": "⚫"},       # 흔함
-    "철": {"money": 2000, "color": 0x95a5a6, "emoji": "🔩"},       # 보통
-    "금": {"money": 5000, "color": 0xf1c40f, "emoji": "💰"},       # 드묾
-    "에메랄드": {"money": 20000, "color": 0x2ecc71, "emoji": "💠"}, # 희귀
-    "다이아몬드": {"money": 100000, "color": 0x3498db, "emoji": "💎"} # 전설
+    "석탄": {"emoji": "⬛", "color": 0x333333}, # 50% (첫 번째)
+    "철": {"emoji": "🔘", "color": 0xaaaaaa},   # 30% (두 번째)
+    "금": {"emoji": "🟡", "color": 0xffcc00},   # 15% (세 번째)
+    "에메랄드": {"emoji": "💚", "color": 0x2ecc71}, # 4% (네 번째)
+    "다이아몬드": {"emoji": "💎", "color": 0x3498db} # 1% (다섯 번째)
 }
 
 # [추가] 전리품 아이템 데이터
@@ -347,7 +347,7 @@ class MiningView(discord.ui.View):
         # 1. 광석 랜덤 뽑기 (확률 조정)
         # weights 숫자가 클수록 잘 나옴 (석탄 > 철 > 금 > 에메랄드 > 다이아)
         ore_names = list(ORES.keys())
-        selected_ore = random.choices(ore_names, weights=[50, 30, 15, 4, 1], k=1)[0]
+        selected_ore = random.choices(ore_names, weights=[1, 1, 1, 1, 1], k=1)[0]
         
         self.ore_name = selected_ore
         self.ore_data = ORES[selected_ore]
