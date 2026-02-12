@@ -1387,28 +1387,38 @@ async def help_cmd(interaction: discord.Interaction):
 @client.tree.command(name="문의", description="운영자에게 버그를 제보하거나 건의사항을 보냅니다.")
 @app_commands.describe(content="운영자에게 보낼 내용을 적어라!")
 async def inquiry_cmd(interaction: discord.Interaction, content: str):
-    # ★ [중요] 아까 만든 관리자용 채널 ID를 여기에 붙여넣으세요! (따옴표 없이 숫자만)
+    # 관리자용 채널 ID (본인 채널 ID로 수정하세요라)
     LOG_CHANNEL_ID = 1471454391167881296
     
-    # 문의 로그를 남길 채널 찾기
     log_channel = client.get_channel(LOG_CHANNEL_ID)
     
     if log_channel is None:
-        return await interaction.response.send_message("문의 채널을 찾을 수 없다라! (개발자에게 문의해라)", ephemeral=True)
+        # 이 에러 메시지도 본인만 보이게 설정했습니다라
+        return await interaction.response.send_message("문의 채널을 찾을 수 없다라!", ephemeral=True)
 
-    # 1. 유저에게 보내는 답장 (비공개)
-    await interaction.response.send_message("✅ 문의가 접수되었다라! 운영자가 확인 후 처리할 것이다라.", ephemeral=True)
+    # [핵심] ephemeral=True 를 넣으면 명령어를 친 유저 본인에게만 메시지가 보입니다라!
+    await interaction.response.send_message("✅ 문의가 성공적으로 접수되었다라! 나만 볼 수 있는 메시지다라.", ephemeral=True)
     
-    # 2. 관리자 채널에 리포트 전송
+    # 관리자 채널로 보내는 임베드 (이건 관리자만 있는 채널로 전송되니 안심하세요라)
     embed = discord.Embed(title="📩 새로운 문의 도착!", color=0xff5500)
     embed.add_field(name="보낸 사람", value=f"{interaction.user.name} ({interaction.user.id})", inline=False)
     embed.add_field(name="내용", value=content, inline=False)
     embed.add_field(name="보낸 곳", value=f"{interaction.guild.name} / {interaction.channel.name}", inline=False)
-    
-    # 현재 시간 표시
     embed.set_footer(text=f"접수 시간: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     
     await log_channel.send(embed=embed)
+
+@client.tree.command(name="후원", description="로라 RPG의 발전을 위해 따뜻한 마음을 나누어 주세요라!")
+async def support_cmd(interaction: discord.Interaction):
+    embed = discord.Embed(title="💖 로라 RPG 후원 안내", color=0xff69b4)
+    embed.description = "후원금은 서버 유지비(Railway)와 기능 개발에 사용됩니다라!"
+    
+    embed.add_field(name="🎁 후원 혜택", value="• 전용 칭호 [Sponsor] 부여", inline=False)
+    embed.add_field(name="🔗 후원 링크", value="[여기에 후원 사이트 주소를 넣으세요라!]", inline=False)
+    
+    embed.set_footer(text="항상 로라를 아껴주셔서 감사합니다라! 🦊")
+    await interaction.response.send_message(embed=embed)
+
 
 # ---------------- [추가] 데이터 초기화 명령어 ----------------
 
