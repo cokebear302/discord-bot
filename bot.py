@@ -77,7 +77,6 @@ POTION_SHOP = {
     }
 }
 
-# [수정된 광석 데이터: 가격(money) 포함]
 ORES = {
     "석탄": {"money": 500, "color": 0x34495e, "emoji": "⚫"},       # 흔함
     "철": {"money": 2000, "color": 0x95a5a6, "emoji": "🔩"},       # 보통
@@ -286,6 +285,16 @@ class MyClient(discord.Client):
         super().__init__(intents=discord.Intents.default())
         self.tree = app_commands.CommandTree(self)
     async def setup_hook(self): await self.tree.sync()
+
+class MyClient(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.members = True  # [추가됨] 서버 가입 여부를 확인하기 위해 필수!
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+    async def setup_hook(self): await self.tree.sync()
+
+client = MyClient()
 
 client = MyClient()
 last_used = {}
@@ -1424,6 +1433,71 @@ async def support_cmd(interaction: discord.Interaction):
     
     embed.set_footer(text="항상 로라를 아껴주셔서 감사합니다라! 🦊")
     await interaction.response.send_message(embed=embed)
+
+# ---------------- [추가] 가입 보상 시스템 ----------------
+
+TARGET_GUILD_ID = 1471473319969558538 # ★ 여기에 본인 디스코드 서버 ID를 숫자로 넣으세요라!
+INVITE_LINK = "https://discord.gg/33R9aaRc" # ★ 여기에 본인 서버 초대 링크를 넣으세요라!
+
+class JoinRewardView(discord.ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=None)
+        self.user_id = str(user_id)
+        
+        # 1. 서버 링크 버튼 (URL 버튼은 눌러도 봇한테 신호가 안 가고 바로 웹/앱으로 이동합니다)
+        self.add_item(discord.ui.Button(label="🔗 서버 가입하기", url=INVITE_LINK, style=discord.ButtonStyle.link))
+
+    @discord.ui.button(label="🎁 보상 받기", style=discord.ButtonStyle.success)
+    async def claim_reward(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            return await interaction.response.send_message("남의 보상을 탐내지 마라!", ephemeral=True)
+        
+        uid = str(interaction.user.id)
+        inv_data = load_inv()
+        create_user_if_not_exists(uid)
+
+        # 1. 이미 보상을 받았는지 확인 (데이터베이스에 'joined_reward' 기록을 남김)
+        if inv_data[uid].get("joined_reward", False):
+            return await interaction.response.send_message("❌ 이미 가입 보상을 받았다라! 욕심쟁이!", ephemeral=True)
+
+        # 2. 실제로 서버에 있는지 확인
+        target_guild = interaction.client.get_guild(TARGET_GUILD_ID)
+        if target_guild is None:
+            return await interaction.response.send_message("❌ 봇이 해당 서버에 없다라! 관리자에게 문의해라.", ephemeral=True)
+        
+        member = target_guild.get_member(interaction.user.id)
+        if member is None:
+            return await interaction.response.send_message("❌ 아직 서버에 안 들어왔다라! 먼저 [서버 가입하기] 링크를 눌러서 들어와라.", ephemeral=True)
+
+        # 3. 보상 지급 로직
+        money_data = load_data()
+        money_data[uid] = money_data.get(uid, 0) + 100000
+        save_data(money_data)
+
+        # 4. 중복 수령 방지를 위해 기록 남기기
+        inv_data[uid]["joined_reward"] = True
+        save_inv(inv_data)
+
+        # 5. 성공 메시지 띄우고 버튼들 비활성화
+        embed = discord.Embed(
+            title="🎉 가입 보상 지급 완료!", 
+            description="서버 가입을 환영한다라!\n감사의 의미로 **100,000원**이 지급되었다라!", 
+            color=0x2ecc71
+        )
+        for child in self.children:
+            child.disabled = True
+            
+        await interaction.response.edit_message(embed=embed, view=self)
+
+@client.tree.command(name="가입", description="공식 서버에 가입하고 100,000원을 받습니다라!")
+async def join_cmd(interaction: discord.Interaction):
+    view = JoinRewardView(interaction.user.id)
+    embed = discord.Embed(
+        title="✨ 공식 서버 가입 이벤트!", 
+        description="아래 **[서버 가입하기]** 버튼을 눌러 서버에 들어온 뒤,\n**[보상 받기]** 버튼을 누르면 정착금 **100,000원**을 준다라!", 
+        color=0x3498db
+    )
+    await interaction.response.send_message(embed=embed, view=view)
 
 
 # ---------------- [추가] 데이터 초기화 명령어 ----------------
