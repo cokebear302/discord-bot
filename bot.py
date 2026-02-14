@@ -1663,6 +1663,15 @@ async def reset_all(interaction: discord.Interaction):
 
 # ---------------- [추가] 관리자 전용 골드 지급 명령어 ----------------
 
+class MyClient(discord.Client):
+    def __init__(self):
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    # 이 부분이 있어야 봇이 켜질 때 새 명령어를 디스코드에 등록합니다.
+    async def setup_hook(self):
+        await self.tree.sync() # 전역 명령어 동기화
+
 @client.tree.command(name="골드입금", description="[관리자 전용] 특정 유저에게 골드를 지급합니다라!")
 @app_commands.describe(대상="골드를 받을 유저를 선택하세요", 금액="지급할 금액을 입력하세요")
 async def give_gold(interaction: discord.Interaction, 대상: discord.Member, 금액: int):
@@ -1700,4 +1709,4 @@ async def give_gold(interaction: discord.Interaction, 대상: discord.Member, �
 
     await interaction.response.send_message(embed=embed)
 
-client.run(TOKEN) 
+client.run(TOKEN)
