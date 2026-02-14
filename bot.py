@@ -1661,4 +1661,43 @@ async def reset_all(interaction: discord.Interaction):
     embed = discord.Embed(title="💣 데이터 초기화 완료", description="모든 유저의 돈과 아이템이 삭제되었다라...\n이제 새로운 세상이다라!", color=0xff0000)
     await interaction.response.send_message(embed=embed)
 
+# ---------------- [추가] 관리자 전용 골드 지급 명령어 ----------------
+
+@client.tree.command(name="골드입금", description="[관리자 전용] 특정 유저에게 골드를 지급합니다라!")
+@app_commands.describe(대상="골드를 받을 유저를 선택하세요", 금액="지급할 금액을 입력하세요")
+async def give_gold(interaction: discord.Interaction, 대상: discord.Member, 금액: int):
+    # ★ 본인의 디스코드 ID로 수정하세요 ★
+    MY_ID = 743833695080808578
+
+    # 1. 관리자 권한 체크
+    if interaction.user.id != MY_ID:
+        return await interaction.response.send_message("너는 관리자가 아니다라! 함부로 돈을 만들지 마라!", ephemeral=True)
+
+    # 2. 금액 유효성 체크
+    if 금액 <= 0:
+        return await interaction.response.send_message("0원 이하의 금액은 입금할 수 없다라!", ephemeral=True)
+
+    # 3. 데이터 로드 및 수정
+    uid = str(대상.id)
+    data = load_data()
+    
+    # 해당 유저가 데이터에 없으면 0원부터 시작
+    if uid not in data:
+        data[uid] = 0
+        
+    data[uid] += 금액
+    save_data(data)
+
+    # 4. 결과 보고 (임베드)
+    embed = discord.Embed(
+        title="💰 관리자 골드 입금 완료",
+        description=f"관리자님이 **{대상.mention}**에게 골드를 입금했다라!",
+        color=0xf1c40f
+    )
+    embed.add_field(name="입금된 금액", value=f"💵 {금액:,}원", inline=True)
+    embed.add_field(name="최종 잔액", value=f"💳 {data[uid]:,}원", inline=True)
+    embed.set_footer(text="부정한 방법으로 생성된 골드는 회수될 수 있다라!")
+
+    await interaction.response.send_message(embed=embed)
+
 client.run(TOKEN)
