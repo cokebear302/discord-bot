@@ -1700,4 +1700,4 @@ async def give_gold(interaction: discord.Interaction, 대상: discord.Member, �
 
     await interaction.response.send_message(embed=embed)
 
-client.run(TOKEN)
+client.run(TOKEN) 
