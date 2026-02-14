@@ -82,7 +82,7 @@ ORES = {
     "철": {"money": 2000, "color": 0x95a5a6, "emoji": "🔩"},       # 보통
     "금": {"money": 5000, "color": 0xf1c40f, "emoji": "💰"},       # 드묾
     "에메랄드": {"money": 20000, "color": 0x2ecc71, "emoji": "💠"}, # 희귀
-    "다이아몬드": {"money": 100000, "color": 0x3498db, "emoji": "💎"} # 전설
+    "다이아몬드": {"money": 50000, "color": 0x3498db, "emoji": "💎"} # 전설
 }
 
 # [추가] 전리품 아이템 데이터
@@ -280,6 +280,22 @@ def required_exp(level):
         return 50 + (level * 100) + (level * level * 10)
 
 # ---------------- 3. 클라이언트 설정 ----------------
+# 인텐트 설정
+intents = discord.Intents.default()
+intents.message_content = True  # 메시지 내용 읽기 (필요시)
+intents.members = True          # ★ 멤버 정보를 가져오기 위해 반드시 필요!
+
+class MyClient(discord.Client):
+    def __init__(self):
+        super().__init__(intents=intents) # 인텐트 전달
+        self.tree = app_commands.CommandTree(self)
+
+client = MyClient()
+
+# 클라이언트(또는 봇) 객체 생성 시 인텐트 전달
+client = discord.Client(intents=intents) 
+# 만약 commands.Bot을 쓰신다면: bot = commands.Bot(command_prefix="!", intents=intents)
+
 class MyClient(discord.Client):
     def __init__(self):
         super().__init__(intents=discord.Intents.default())
@@ -575,6 +591,8 @@ class DungeonView(discord.ui.View):
         self.log = f"**[{self.dungeon_data['name']}]**에 입장했다라! 조심해라!"
         self.spawn_monster()
 
+
+
     def spawn_monster(self):
         # 10층이면 보스, 아니면 일반 몬스터 소환
         if self.stage == self.max_stage:
@@ -611,6 +629,30 @@ class DungeonView(discord.ui.View):
             if target.response.is_done(): await target.edit_original_response(embed=embed, view=self)
             else: await target.response.edit_message(embed=embed, view=self)
         except: pass
+
+
+        # 갱신된 스탯으로 정보 표시
+        p_atk, p_def, p_hp = calculate_stats(self.user_id)
+        
+        embed = discord.Embed(title=f"🆙 {interaction.user.name}의 능력치 강화", color=0xe74c3c)
+        embed.add_field(name="현재 포인트", value=f"✨ {inv[uid]['point']} P", inline=False)
+        embed.add_field(name="최종 능력치", value=f"⚔️ 공격력: {p_atk}\n🛡️ 방어력: {p_def}\n❤️ 체력: {p_hp}", inline=False)
+        embed.set_footer(text="포인트를 투자해 더 강해져라!")
+
+        # 기존 메시지 수정
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    @discord.ui.button(label="공격력 +1", style=discord.ButtonStyle.danger, emoji="⚔️")
+    async def atk_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.update_stat(interaction, "atk")
+
+    @discord.ui.button(label="방어력 +1", style=discord.ButtonStyle.primary, emoji="🛡️")
+    async def def_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.update_stat(interaction, "def")
+
+    @discord.ui.button(label="체력 +10", style=discord.ButtonStyle.success, emoji="❤️")
+    async def hp_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.update_stat(interaction, "hp")
 
     @discord.ui.button(label="공격", style=discord.ButtonStyle.danger, emoji="⚔️")
     async def attack(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -690,15 +732,42 @@ class DungeonView(discord.ui.View):
 
     # [수정됨] 스테이지 클리어 (경험치/골드 표시 추가)
     # [수정됨] 스테이지 클리어 (전리품 획득 로직 추가)
+    # [수정됨] 스테이지 클리어 (전리품 획득 및 레벨업 로직 추가)
     async def stage_clear(self, interaction):
         reward_money = self.monster["money"]
         reward_exp = self.monster["exp"]
         
         data = load_data(); inv = load_inv()
+        uid = self.user_id
         
-        # 1. 돈과 경험치 지급
-        data[self.user_id] = data.get(self.user_id, 0) + reward_money
-        inv[self.user_id]["exp"] += reward_exp
+        # 1. 일단 경험치를 추가합니다.
+        inv[uid]["exp"] += reward_exp
+        data[uid] = data.get(uid, 0) + reward_money
+
+        # 2. [수정된 핵심 로직] 경험치가 꽉 찼는지 확인하고 레벨업 시킵니다.
+        leveled_up = False
+        while True:
+            current_lvl = inv[uid]["level"]
+            needed = required_exp(current_lvl) # 현재 레벨에서 필요한 경험치량
+            
+            # 현재 경험치가 필요 경험치보다 많거나 같다면?
+            if inv[uid]["exp"] >= needed:
+                inv[uid]["exp"] -= needed      # 경험치를 소모하고
+                inv[uid]["level"] += 1         # 레벨을 1 올립니다
+                inv[uid]["point"] += 3         # 보너스 포인트도 줍니다
+                leveled_up = True
+            else:
+                # 더 이상 레벨업할 경험치가 없으면 반복문을 빠져나갑니다.
+                break
+
+        # 3. 데이터 저장
+        save_data(data); save_inv(inv)
+
+        # ... (이후 결과 출력 및 로그 작성 부분)
+        level_msg = f"\n🎊 **축하한다라! 레벨이 {inv[uid]['level']}(으)로 올랐다라!**" if leveled_up else ""
+        self.log = f"✅ {self.monster_name} 처치! {reward_money}원과 {reward_exp}XP 획득!{level_msg}"
+        # ...
+                
         
         # 2. 전리품(드랍) 계산
         drop_msg = ""
@@ -722,7 +791,10 @@ class DungeonView(discord.ui.View):
         # 3. 결과 출력 및 다음 층 이동
         if self.stage >= self.max_stage:
             embed = discord.Embed(title="🏆 던전 정복 완료!", description=f"전설적인 몬스터 **{self.monster_name}**을(를) 쓰러뜨렸다라!", color=0xf1c40f)
-            embed.add_field(name="최종 보상", value=f"💰 {reward_money * 3}원 (보너스)\n✨ {reward_exp * 3} EXP{drop_msg}")
+            
+            # 레벨업 메시지 추가
+            level_msg = f"\n🎊 **레벨업! (Lv.{inv[self.user_id]['level']})**" if leveled_up else ""
+            embed.add_field(name="최종 보상", value=f"💰 {reward_money * 3}원 (보너스)\n✨ {reward_exp * 3} EXP{drop_msg}{level_msg}")
             
             # 보스 추가 보상
             data[self.user_id] += reward_money * 2
@@ -737,7 +809,8 @@ class DungeonView(discord.ui.View):
             self.current_hp = min(self.max_hp, self.current_hp + heal)
             
             reward_text = f"[ 💰+{reward_money}G | ✨+{reward_exp}EXP ]"
-            self.log = f"✅ {self.monster_name} 처치! {reward_text}{drop_msg}\n💤 휴식하여 체력이 {heal} 회복되었다라.\n곧바로 {self.stage}층으로 이동한다라!"
+            level_text = f"\n🎊 **레벨업! (Lv.{inv[self.user_id]['level']})** 스탯 포인트를 얻었다라!" if leveled_up else ""
+            self.log = f"✅ {self.monster_name} 처치! {reward_text}{drop_msg}{level_text}\n💤 휴식하여 체력이 {heal} 회복되었다라.\n곧바로 {self.stage}층으로 이동한다라!"
             
             self.spawn_monster()
             await self.update_battle(interaction)
@@ -1166,11 +1239,23 @@ async def stats_callback(interaction, uid):
     else: 
         await interaction.response.send_message(embed=embed, view=view)
 
-@client.tree.command(name="스탯", description="능력치를 보거나 올릴 수 있다라!")
-async def stats_cmd(interaction: discord.Interaction):
-    await interaction.response.defer()
-    uid = str(interaction.user.id); create_user_if_not_exists(uid)
-    await stats_callback(interaction, uid)
+@client.tree.command(name="스탯", description="스탯 포인트를 투자해 강해진다라!")
+async def stat_command(interaction: discord.Interaction):
+    uid = str(interaction.user.id)
+    inv = load_inv()
+    
+    if uid not in inv:
+        return await interaction.response.send_message("가입부터 해라!", ephemeral=True)
+        
+    p_atk, p_def, p_hp = calculate_stats(interaction.user.id)
+    view = StatView(interaction.user.id)
+    
+    embed = discord.Embed(title=f"📊 {interaction.user.name}의 상태창", color=0x3498db)
+    embed.add_field(name="보유 포인트", value=f"✨ {inv[uid].get('point', 0)} P", inline=False)
+    embed.add_field(name="현재 능력치", value=f"⚔️ {p_atk} | 🛡️ {p_def} | ❤️ {p_hp}", inline=False)
+    
+    # ★ 핵심: ephemeral=True를 추가해서 본인에게만 보이게 함
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 @client.tree.command(name="장비창", description="현재 착용하고 있는 장비를 확인한다라!")
 async def equip_cmd(i):
@@ -1435,59 +1520,112 @@ async def support_cmd(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 # ---------------- [추가] 가입 보상 시스템 ----------------
+# ---------------- [추가] 스탯 강화 화면 ----------------
+# ---------------- [추가] 스탯 강화 화면 ----------------
+class StatView(discord.ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=60)
+        self.user_id = user_id
 
-TARGET_GUILD_ID = 1471473319969558538 # ★ 여기에 본인 디스코드 서버 ID를 숫자로 넣으세요라!
-INVITE_LINK = "https://discord.gg/33R9aaRc" # ★ 여기에 본인 서버 초대 링크를 넣으세요라!
+    async def update_stat(self, interaction: discord.Interaction, stat_type):
+        # 3초 안에 응답 안 하면 오류 뜨는 걸 방지
+        await interaction.response.defer()
+        
+        inv = load_inv()
+        uid = str(self.user_id)
+        
+        if inv[uid]["point"] <= 0:
+            return await interaction.followup.send("투자할 포인트가 없다라!", ephemeral=True)
+
+        # 포인트 차감 및 스탯 증가
+        inv[uid]["point"] -= 1
+        if stat_type == "atk": inv[uid]["added_atk"] += 2
+        elif stat_type == "def": inv[uid]["added_def"] += 1
+        elif stat_type == "hp": inv[uid]["added_hp"] += 10 # 피통은 10씩 증가
+        
+        save_inv(inv)
+
+        # 갱신된 정보로 메시지 내용 변경
+        p_atk, p_def, p_hp = calculate_stats(self.user_id)
+        embed = discord.Embed(title=f"📊 {interaction.user.name}의 능력치 강화", color=0xe74c3c)
+        embed.add_field(name="남은 포인트", value=f"✨ {inv[uid]['point']} P", inline=False)
+        embed.add_field(name="현재 최종 능력치", value=f"⚔️ 공격: {p_atk} | 🛡️ 방어: {p_def} | ❤️ 체력: {p_hp}", inline=False)
+        
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    @discord.ui.button(label="공격력 +2", style=discord.ButtonStyle.danger, emoji="⚔️")
+    async def atk_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.update_stat(interaction, "atk")
+
+    @discord.ui.button(label="방어력 +1", style=discord.ButtonStyle.primary, emoji="🛡️")
+    async def def_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.update_stat(interaction, "def")
+
+    @discord.ui.button(label="체력 +10", style=discord.ButtonStyle.success, emoji="❤️")
+    async def hp_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.update_stat(interaction, "hp")
+
+    @discord.ui.button(label="강화 종료", style=discord.ButtonStyle.secondary)
+    async def done(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 버튼을 모두 없애서 던전 버튼과 섞이지 않게 함
+        await interaction.response.edit_message(content="✅ 스탯 강화를 마쳤다라!", embed=None, view=None)
 
 class JoinRewardView(discord.ui.View):
+    # [수정] user_id를 받을 수 있도록 init 수정
     def __init__(self, user_id):
         super().__init__(timeout=None)
-        self.user_id = str(user_id)
+        self.user_id = user_id
+        # 본인의 서버 초대 링크를 여기에 넣으세요
+        self.add_item(discord.ui.Button(label="서버 가입하기", url="https://discord.gg/33R9aaRc"))
+
+    # [수정] 버튼이 클래스 안으로 들어오도록 들여쓰기(Tab) 수정
+    @discord.ui.button(label="보상 받기", style=discord.ButtonStyle.success, emoji="🎁")
+    async def check_reward(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+
+        OFFICIAL_GUILD_ID = 1471427923935494353
+        guild = interaction.client.get_guild(OFFICIAL_GUILD_ID)
         
-        # 1. 서버 링크 버튼 (URL 버튼은 눌러도 봇한테 신호가 안 가고 바로 웹/앱으로 이동합니다)
-        self.add_item(discord.ui.Button(label="🔗 서버 가입하기", url=INVITE_LINK, style=discord.ButtonStyle.link))
+        if guild is None:
+            return await interaction.followup.send("봇이 공식 서버에 들어있지 않다라!", ephemeral=True)
 
-    @discord.ui.button(label="🎁 보상 받기", style=discord.ButtonStyle.success)
-    async def claim_reward(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if str(interaction.user.id) != self.user_id:
-            return await interaction.response.send_message("남의 보상을 탐내지 마라!", ephemeral=True)
-        
-        uid = str(interaction.user.id)
-        inv_data = load_inv()
-        create_user_if_not_exists(uid)
+        try:
+            member = await guild.fetch_member(interaction.user.id)
+            uid = str(interaction.user.id)
+            m_data = load_data()
+            inv = load_inv()
 
-        # 1. 이미 보상을 받았는지 확인 (데이터베이스에 'joined_reward' 기록을 남김)
-        if inv_data[uid].get("joined_reward", False):
-            return await interaction.response.send_message("❌ 이미 가입 보상을 받았다라! 욕심쟁이!", ephemeral=True)
+            # ★ [추가] 중복 수령 확인 ★
+            # inventory.json의 유저 데이터 안에 joined_reward 항목이 True인지 확인
+            if inv[uid].get("joined_reward", False):
+                return await interaction.followup.send("이미 가입 보상을 받았다라! 욕심부리지 마라!", ephemeral=True)
 
-        # 2. 실제로 서버에 있는지 확인
-        target_guild = interaction.client.get_guild(TARGET_GUILD_ID)
-        if target_guild is None:
-            return await interaction.response.send_message("❌ 봇이 해당 서버에 없다라! 관리자에게 문의해라.", ephemeral=True)
-        
-        member = target_guild.get_member(interaction.user.id)
-        if member is None:
-            return await interaction.response.send_message("❌ 아직 서버에 안 들어왔다라! 먼저 [서버 가입하기] 링크를 눌러서 들어와라.", ephemeral=True)
-
-        # 3. 보상 지급 로직
-        money_data = load_data()
-        money_data[uid] = money_data.get(uid, 0) + 100000
-        save_data(money_data)
-
-        # 4. 중복 수령 방지를 위해 기록 남기기
-        inv_data[uid]["joined_reward"] = True
-        save_inv(inv_data)
-
-        # 5. 성공 메시지 띄우고 버튼들 비활성화
-        embed = discord.Embed(
-            title="🎉 가입 보상 지급 완료!", 
-            description="서버 가입을 환영한다라!\n감사의 의미로 **100,000원**이 지급되었다라!", 
-            color=0x2ecc71
-        )
-        for child in self.children:
-            child.disabled = True
+            # 보상 지급
+            m_data[uid] = m_data.get(uid, 0) + 100000
             
-        await interaction.response.edit_message(embed=embed, view=self)
+            # ★ [추가] 보상 수령 상태 저장 ★
+            inv[uid]["joined_reward"] = True
+            
+            save_data(m_data)
+            save_inv(inv)
+
+            embed = discord.Embed(
+                title="🎊 가입 보상 지급 완료!",
+                description="공식 서버 가입 확인 완료! 정착금 **100,000원**이 입금되었다라!",
+                color=0x2ecc71
+            )
+            
+            # 버튼 비활성화
+            for child in self.children:
+                if isinstance(child, discord.ui.Button) and child.label == "보상 받기":
+                    child.disabled = True
+            
+            await interaction.edit_original_response(embed=embed, view=self)
+
+        except discord.NotFound:
+            await interaction.followup.send("아직 공식 서버에 가입하지 않았다라!", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"오류 발생: {e}", ephemeral=True)
 
 @client.tree.command(name="가입", description="공식 서버에 가입하고 100,000원을 받습니다라!")
 async def join_cmd(interaction: discord.Interaction):
@@ -1498,6 +1636,8 @@ async def join_cmd(interaction: discord.Interaction):
         color=0x3498db
     )
     await interaction.response.send_message(embed=embed, view=view)
+
+# ... (이후 초기화 명령어 등 기존 코드 유지) ...
 
 
 # ---------------- [추가] 데이터 초기화 명령어 ----------------
