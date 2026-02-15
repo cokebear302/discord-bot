@@ -17,7 +17,10 @@ BASE_STATS = {"atk": 3, "def": 1, "hp": 10}
 ITEMS = {
     "낡은 목검": {"type": "weapon", "atk": 2, "def": 0, "hp": 0},
     "가죽 갑옷": {"type": "armor", "atk": 0, "def": 5, "hp": 20},
-    "금간 철 반지": {"type": "artifact", "atk": 2, "def": 2, "hp": 10}
+    "금간 철 반지": {"type": "artifact", "atk": 0, "def": 0, "hp": 10},
+#제작 아이템-------------------
+    "드래곤 링": {"price": 1000000,"type": "artifact", "atk": 10, "def": 10, "hp": 10}
+
 }
 
 WEAPON_SHOP = {
@@ -28,7 +31,7 @@ WEAPON_SHOP = {
     "판테온의 창과 방패": {"price": 1200000, "type": "weapon", "atk": 80, "def": 15, "hp": 0},
     "용의 발톱": {"price": 6000000, "type": "weapon", "atk": 200, "def": 0, "hp": 0},
     "드래곤 슬레이어의 검": {"price": 10000000, "type": "weapon", "atk": 364, "def": 0, "hp": 0},
-    "몰락한 왕의 검": {"price": 32000000, "type": "weapon", "atk": 999, "def": 0, "hp": 0}
+    "몰락한 왕의 검": {"price": 32000000, "type": "weapon", "atk": 600, "def": 0, "hp": 0}
     
 }
 
@@ -48,7 +51,7 @@ ARTIFACT_SHOP = {
     "사파이어 목걸이": {"price": 1000000, "type": "artifact", "atk": 3, "def": 10, "hp": 0},
     "루비 수정": {"price": 2000000, "type": "artifact", "atk": 0, "def": 10, "hp": 200},
     "마법이 깃든 엘프의 반지": {"price": 10000000, "type": "artifact", "atk": 40, "def": 20, "hp": 0},
-    "현자의 돌": {"price": 314159265, "type": "artifact", "atk": 999, "def": 999, "hp": 999}
+    "현자의 돌": {"price": 314159265, "type": "artifact", "atk": 99, "def": 33, "hp": 222}
 }
 
 # [추가] 포션 상점 데이터
@@ -63,12 +66,12 @@ POTION_SHOP = {
     "중급 포션": {
         "price": 7500, "type": "potion", 
         "fix": 100, "pct": 30, # 100 + 20%
-        "desc": "체력 100 + 최대 체력의 20% 회복"
+        "desc": "체력 100 + 최대 체력의 30% 회복"
     },
     "상급 포션": {
         "price": 30000, "type": "potion", 
         "fix": 300, "pct": 50, # 300 + 30%
-        "desc": "체력 300 + 최대 체력의 30% 회복"
+        "desc": "체력 300 + 최대 체력의 50% 회복"
     },
     "엘릭서": {
         "price": 999999, "type": "potion", 
@@ -83,6 +86,13 @@ ORES = {
     "금": {"money": 5000, "color": 0xf1c40f, "emoji": "💰"},       # 드묾
     "에메랄드": {"money": 20000, "color": 0x2ecc71, "emoji": "💠"}, # 희귀
     "다이아몬드": {"money": 50000, "color": 0x3498db, "emoji": "💎"} # 전설
+}
+
+# ---------------- [추가] 대장간 조합법 설정 ----------------
+# "제작할 장비 이름": {"필요한 재료1": 개수, "필요한 재료2": 개수} 형식으로 자유롭게 추가하세요라!
+CRAFTING_RECIPES = {
+    
+    "드래곤 링": {"슬라임 점액": 10, "고블린의 뼈": 5, "오크의 이빨": 5,"스켈레톤의 뼈": 5,"드래곤 알": 1}
 }
 
 # [추가] 전리품 아이템 데이터
@@ -168,8 +178,18 @@ DUNGEON_MOBS = {
             "수정 동굴의 여왕": {"hp": 10000, "atk": 900, "def": 500, "exp": 20000, "money": 5000000, "image": "", "drops": [("위험한 독 주머니", 10),("엘릭서", 1)]}
         },
         "name": "설산"
+    },
+    5: {
+        "mobs": {
+            "빙결의 아라크네": {"hp": 3000, "atk": 400, "def": 250, "exp": 1200, "money": 300000, "image": "", "drops": [("아라크네의 독이빨", 50)]},
+            "파왕 예티": {"hp": 4000, "atk": 300, "def": 400, "exp": 1600, "money": 500000, "image": "", "drops": [("예티의 털 가죽", 20)]},
+            "서리 새끼거미 무리": {"hp": 3500, "atk": 700, "def": 20, "exp": 2000, "money": 400000, "image": "", "drops": [("상급 포션", 50)]}
+        },
+        "boss": {
+            "수정 동굴의 여왕": {"hp": 10000, "atk": 900, "def": 500, "exp": 20000, "money": 5000000, "image": "", "drops": [("위험한 독 주머니", 10),("엘릭서", 1)]}
+        },
+        "name": "설산"
     }
-    
 }
 
 # 기존 몬스터 데이터 호환성 유지 (에러 방지용)
@@ -642,17 +662,6 @@ class DungeonView(discord.ui.View):
         # 기존 메시지 수정
         await interaction.edit_original_response(embed=embed, view=self)
 
-    @discord.ui.button(label="공격력 +1", style=discord.ButtonStyle.danger, emoji="⚔️")
-    async def atk_up(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.update_stat(interaction, "atk")
-
-    @discord.ui.button(label="방어력 +1", style=discord.ButtonStyle.primary, emoji="🛡️")
-    async def def_up(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.update_stat(interaction, "def")
-
-    @discord.ui.button(label="체력 +10", style=discord.ButtonStyle.success, emoji="❤️")
-    async def hp_up(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.update_stat(interaction, "hp")
 
     @discord.ui.button(label="공격", style=discord.ButtonStyle.danger, emoji="⚔️")
     async def attack(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1078,6 +1087,95 @@ class EnhanceSelect(discord.ui.Select):
             embed = discord.Embed(title="💥 강화 실패...", description=f"손이 미끄러졌다라...\n(돈만 날렸다라 -{cost:,}원)", color=0xe74c3c)
             await interaction.response.send_message(embed=embed)
 
+class CraftConfirmView(discord.ui.View):
+    def __init__(self, user_id, item_name, recipe):
+        super().__init__(timeout=None)
+        self.user_id = str(user_id)
+        self.item_name = item_name
+        self.recipe = recipe
+
+    @discord.ui.button(label="🔨 제작하기", style=discord.ButtonStyle.success)
+    async def craft_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            return await interaction.response.send_message("네가 제작할 차례가 아니다라!", ephemeral=True)
+        
+        uid = str(interaction.user.id)
+        inv_data = load_inv()
+        create_user_if_not_exists(uid)
+        
+        # 1. 재료가 충분한지 검사
+        for mat, required_amount in self.recipe.items():
+            # (주의) 인벤토리에 아이템 개수를 저장하는 방식에 맞춰 수정이 필요할 수 있습니다.
+            # 여기서는 inv_data[uid] 안에 {"슬라임의 점액": 3} 형식으로 들어있다고 가정합니다.
+            current_amount = inv_data[uid].get(mat, 0)
+            if current_amount < required_amount:
+                return await interaction.response.send_message(
+                    f"❌ 재료가 부족하다라! ({mat}가 {required_amount - current_amount}개 더 필요함)", 
+                    ephemeral=True
+                )
+
+        # 2. 재료가 충분하다면 차감
+        for mat, required_amount in self.recipe.items():
+            inv_data[uid][mat] -= required_amount
+            if inv_data[uid][mat] <= 0:
+                del inv_data[uid][mat]  # 0개가 되면 깔끔하게 삭제
+                
+        # 3. 완성된 장비 지급
+        inv_data[uid][self.item_name] = inv_data[uid].get(self.item_name, 0) + 1
+        save_inv(inv_data)
+
+        embed = discord.Embed(
+            title="🎉 캉! 캉! 장비 완성!",
+            description=f"대장장이가 땀을 흘려 **{self.item_name}**을(를) 만들어냈다라!\n인벤토리를 확인해 봐라!",
+            color=0xf1c40f
+        )
+        
+        # 버튼 비활성화
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(embed=embed, view=self)
+
+class BlacksmithSelect(discord.ui.Select):
+    def __init__(self, user_id):
+        self.user_id = str(user_id)
+        options = []
+        for item_name in CRAFTING_RECIPES.keys():
+            options.append(discord.SelectOption(label=item_name, description="이 장비의 도면과 필요 재료를 확인한다라!"))
+            
+        super().__init__(placeholder="망치질할 장비를 선택해라!", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.user_id:
+            return await interaction.response.send_message("이건 네가 볼 수 있는 도면이 아니다라!", ephemeral=True)
+        
+        item_name = self.values[0]
+        recipe = CRAFTING_RECIPES[item_name]
+        
+        # 필요 재료 텍스트 만들기
+        recipe_text = ""
+        inv_data = load_inv()
+        uid = str(interaction.user.id)
+        
+        for mat, amount in recipe.items():
+            current = inv_data.get(uid, {}).get(mat, 0)
+            # 재료가 충분하면 초록색(✅), 부족하면 빨간색(❌) 아이콘 표시
+            icon = "✅" if current >= amount else "❌"
+            recipe_text += f"{icon} **{mat}** : {amount}개 필요 (보유: {current}개)\n"
+            
+        embed = discord.Embed(
+            title=f"🛠️ {item_name} 제작 도면",
+            description=f"**[필요한 재료 목록]**\n\n{recipe_text}\n\n재료가 모두 모였다면 아래 버튼을 눌러라!",
+            color=0xe67e22
+        )
+        
+        # 제작 확인 뷰로 교체
+        await interaction.response.edit_message(embed=embed, view=CraftConfirmView(self.user_id, item_name, recipe))
+
+class BlacksmithView(discord.ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=None)
+        self.add_item(BlacksmithSelect(user_id))
+
 # [수정됨] 실제 강화 버튼을 눌렀을 때 처리하는 부분 (가격 공식 수정)
 class EnhanceSelect(discord.ui.Select):
     def __init__(self, options):
@@ -1350,7 +1448,7 @@ async def dungeon_4(interaction: discord.Interaction):
     dungeon_last_used[uid] = now
 
     user_id = str(interaction.user.id); create_user_if_not_exists(user_id)
-    view = DungeonView(interaction, user_id, dungeon_level=3)
+    view = DungeonView(interaction, user_id, dungeon_level=4)
     await interaction.response.send_message(embed=discord.Embed(title="매서운 추위의 설산", description="따뜻한 옷을 안입으면 안될거 같다...", color=0x02021A), view=view)
     await view.update_battle()
 
@@ -1570,6 +1668,16 @@ class StatView(discord.ui.View):
         # 버튼을 모두 없애서 던전 버튼과 섞이지 않게 함
         await interaction.response.edit_message(content="✅ 스탯 강화를 마쳤다라!", embed=None, view=None)
 
+@client.tree.command(name="대장간", description="전리품을 모아 강력한 장비를 제작해라!")
+async def blacksmith_cmd(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="🔥 앗 뜨거! 대장간에 온 걸 환영한다라!",
+        description="아래 목록에서 만들고 싶은 장비를 선택하면 필요한 재료를 알려주겠다라.",
+        color=0xe74c3c
+    )
+    view = BlacksmithView(interaction.user.id)
+    await interaction.response.send_message(embed=embed, view=view)
+
 class JoinRewardView(discord.ui.View):
     # [수정] user_id를 받을 수 있도록 init 수정
     def __init__(self, user_id):
@@ -1638,6 +1746,7 @@ async def join_cmd(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=view)
 
 # ... (이후 초기화 명령어 등 기존 코드 유지) ...
+
 
 
 # ---------------- [추가] 데이터 초기화 명령어 ----------------
