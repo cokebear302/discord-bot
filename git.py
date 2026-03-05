@@ -21,6 +21,8 @@ TOKEN = ""
 DATA_FILE = "money.json"
 INV_FILE = "inventory.json"
 
+cooldowns = {}
+
 BASE_STATS = {"atk": 3, "def": 1, "hp": 10}
 
 ITEMS = {
@@ -437,35 +439,51 @@ class MiningView(discord.ui.View):
         if str(interaction.user.id) != self.user_id:
             return await interaction.response.send_message("내 광물이다라! 건들지 마라!", ephemeral=True)
         
-        # 1. 일단 "기다려!" 신호를 보냅니다. (이걸 쓰면 response.edit_message는 못 씁니다!)
         await interaction.response.defer()
         
-        # 2. 로직 처리
         self.current_hp -= 1
         
         if self.current_hp > 0:
-            # [중요] defer를 썼으니까 edit_original_response를 써야 합니다!
             await interaction.edit_original_response(embed=self.get_embed(), view=self)
         else:
-            # 보상 지급 로직
+            # --- [여기서부터 수정됨: 곡괭이 배수 적용 로직] ---
+            inv_data = load_inv()
             m_data = load_data()
-            reward = self.ore_data["money"]
-            m_data[self.user_id] = m_data.get(self.user_id, 0) + reward
-            save_data(m_data)
             
-            # 성공 메시지
+            # 1. 장착한 곡괭이 확인
+            multiplier = 1.0
+            pickaxe_name = "맨손"
+            
+            # 유저의 장착 정보에서 pickaxe 확인
+            user_inv = inv_data.get(self.user_id, {})
+            equipped = user_inv.get("equipped", {})
+            # 주의: 기존 코드 구조에 따라 'pickaxe' 키가 없을 수 있으므로 get 사용
+            current_pick = equipped.get("pickaxe") 
+            
+            if current_pick in PICKAXE_SHOP:
+                multiplier = PICKAXE_SHOP[current_pick]["multi"]
+                pickaxe_name = current_pick
+            
+            # 2. 최종 보상 계산 (광석 기본금액 * 곡괭이 배수)
+            base_reward = self.ore_data["money"]
+            final_reward = int(base_reward * multiplier)
+            
+            # 3. 돈 저장
+            m_data[self.user_id] = m_data.get(self.user_id, 0) + final_reward
+            save_data(m_data)
+            # --- [수정 끝] ---
+            
+            # 성공 메시지 출력
             embed = discord.Embed(
                 title=f"✨ 채굴 성공!",
-                description=f"**{self.ore_name}**을(를) 캐서 **{reward:,}원**을 벌었다라!",
+                description=f"**[{pickaxe_name}]**(으)로 **{self.ore_name}**을(를) 캤다라!\n수익: **{final_reward:,}원** (배수 x{multiplier} 적용)",
                 color=self.ore_data["color"]
             )
             embed.set_thumbnail(url="https://emojigraph.org/media/apple/pick_26cf-fe0f.png")
             
-            # 버튼 끄기
             for child in self.children:
                 child.disabled = True
                 
-            # [중요] 여기도 edit_original_response로 변경!
             await interaction.edit_original_response(embed=embed, view=self)
             self.stop()
 
@@ -1531,13 +1549,18 @@ async def mine(interaction: discord.Interaction):
 
     # 2. 광석 결정 (기존 ORES 데이터 활용)
     # ORES = {"석탄": 100, "철": 300, ...} 이런 구조라고 가정
+    # 1. 광석 결정
     ore_names = list(ORES.keys())
-    # 뒤로 갈수록 희귀한 광석이 나오도록 확률 조정 (선택 사항)
     mined_ore = random.choice(ore_names)
-    base_price = ORES[mined_ore]
     
-    # 3. 최종 금액 계산 (기본가 * 곡괭이 배수)
-    final_amount = int(base_price * multiplier)
+    # 2. 곡괭이 배수 가져오기
+    inv = load_inv()
+    multiplier = 1.0
+    # ... (인벤토리에서 배수 찾는 로직) ...
+
+    # 3. 보상 계산 [★이 부분이 핵심★]
+    base_reward = ORES[mined_ore]["money"]  # 딕셔너리에서 'money' 키의 값만 추출
+    final_amount = int(base_reward * multiplier)
     
     # 데이터 저장
     money = load_data()
@@ -1912,5 +1935,7 @@ async def give_gold(interaction: discord.Interaction, 대상: discord.Member, �
     embed.set_footer(text="부정한 방법으로 생성된 골드는 회수될 수 있다라!")
 
     await interaction.response.send_message(embed=embed)
+
+client.run(TOKEN)
 
 client.run(TOKEN)
