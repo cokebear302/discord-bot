@@ -69,22 +69,22 @@ ARTIFACT_SHOP = {
 # [수정됨] 포션 상점: 고정 회복량(fix) + 최대 체력 비례(pct)
 POTION_SHOP = {
     "하급 포션": {
-        "price": 500, "type": "potion", 
+        "price": 50, "type": "potion", 
         "fix": 20, "pct": 10,  # 20 + 10%
         "desc": "체력 20 + 최대 체력의 10% 회복"
     },
     "중급 포션": {
-        "price": 7500, "type": "potion", 
+        "price": 700, "type": "potion", 
         "fix": 100, "pct": 30, # 100 + 20%
         "desc": "체력 100 + 최대 체력의 30% 회복"
     },
     "상급 포션": {
-        "price": 30000, "type": "potion", 
+        "price": 3000, "type": "potion", 
         "fix": 300, "pct": 50, # 300 + 30%
         "desc": "체력 300 + 최대 체력의 50% 회복"
     },
     "엘릭서": {
-        "price": 999999, "type": "potion", 
+        "price": 99999, "type": "potion", 
         "fix": 0, "pct": 100,  # 100% (완전 회복)
         "desc": "체력 완전 회복"
     }
@@ -100,18 +100,21 @@ ORES = {
 
 # 기존 SHOP 리스트 근처에 추가하세요
 PICKAXE_SHOP = {
-    "나무 곡괭이": {"price": 5000, "multi": 1.2},    # 돈 1.2배
-    "돌 곡괭이": {"price": 20000, "multi": 1.5},    # 돈 1.5배
-    "철 곡괭이": {"price": 100000, "multi": 2.0},   # 돈 2.0배
-    "다이아몬드 곡괭이": {"price": 500000, "multi": 4.5}, # 돈 4.5배
-    "네더라이트 곡괭이": {"price": 2000000, "multi": 10.0} # 돈 10.0배
+    "나무 곡괭이": {"price": 5000, "multi": 1.5},    
+    "돌 곡괭이": {"price": 20000, "multi": 3.0},    
+    "구리 곡괭이": {"price": 100000, "multi": 7.0},   
+    "금 곡괭이": {"price": 500000, "multi": 14.0}, 
+    "철 곡괭이": {"price": 2000000, "multi": 28.0}, 
+    "다이아몬드 곡괭이": {"price": 5000000, "multi": 50.0},
+    "네더라이트 곡괭이": {"price": 10000000, "multi": 100.0}
 }
 
 # ---------------- [추가] 대장간 조합법 설정 ----------------
 # "제작할 장비 이름": {"필요한 재료1": 개수, "필요한 재료2": 개수} 형식으로 자유롭게 추가하세요라!
 CRAFTING_RECIPES = {
     
-    "드래곤 링": {"슬라임 점액": 10, "고블린의 뼈": 5, "오크의 이빨": 5,"스켈레톤의 뼈": 5,"드래곤 알": 1}
+    "드래곤 링": {"슬라임 점액": 10, "고블린의 뼈": 5, "오크의 이빨": 5,"스켈레톤의 뼈": 5,"드래곤 알": 1},
+    "":{"늑대 가죽":15, "트롤의 피":10}
 }
 
 # [추가] 전리품 아이템 데이터
@@ -125,7 +128,7 @@ LOOT_ITEMS = {
     #---------------잊혀진 광산------------------
     "늑대 가죽": {"type": "loot", "price": 0, "desc": "부드러운 털가죽이다 이걸로 옷을 만들면 좋을거 같다"},
     "트롤의 피": {"type": "loot", "price": 0, "desc": "재생력이 뛰어나다 포션 재료같지만 굳이 먹고싶지 않다"},
-    "이프리트의 숨결": {"type": "loot", "price": 0, "desc": "어건 어디다가 쓰는거지? 내가 순결을 뺏어버린걸까?.."},
+    "이프리트의 불꽃": {"type": "loot", "price": 0, "desc": "어건 어디다가 쓰는거지? 내가 순결을 뺏어버린걸까?.."},
     #---------------엘프의 숲---------------
     "엘프의 부셔진 갑옷": {"type": "loot", "price": 0, "desc": "엘프가 쓰던 갑옷이다 남이 쓰던건 좀 그렇다.."},
     "바람 추적자의 망토": {"type": "loot", "price": 0, "desc": "뭔가 좋아보이는 망토다 있으면 좋을거 같다"},
@@ -172,7 +175,7 @@ DUNGEON_MOBS = {
             "가고일": {"hp": 350, "atk": 80, "def": 50, "exp": 60, "money": 950, "image": "", "drops": [("중급 포션", 30)]}
         },
         "boss": {
-            "이프리트": {"hp": 2000, "atk": 100, "def": 60, "exp": 400, "money": 5000, "image": "", "drops": [("이프리트의 숨결", 10), ("엘릭서", 1)]}
+            "이프리트": {"hp": 2000, "atk": 100, "def": 60, "exp": 400, "money": 5000, "image": "", "drops": [("이프리트의 불꽃", 10), ("엘릭서", 1)]}
         },
         "name": "잊혀진 광산"
     },
@@ -1530,8 +1533,8 @@ async def mine(interaction: discord.Interaction):
     now = time.time()
     
     # 쿨타임 체크 (기존 로직 유지)
-    if uid in cooldowns and now - cooldowns[uid] < 30:
-        remain = int(30 - (now - cooldowns[uid]))
+    if uid in cooldowns and now - cooldowns[uid] < 10:
+        remain = int(10 - (now - cooldowns[uid]))
         return await interaction.response.send_message(f"너무 힘들다라! {remain}초 뒤에 다시 와라!", ephemeral=True)
 
     # 1. 장착한 곡괭이 배수 확인
@@ -1858,7 +1861,7 @@ async def join_cmd(interaction: discord.Interaction):
     view = JoinRewardView(interaction.user.id)
     embed = discord.Embed(
         title="✨ 공식 서버 가입 이벤트!", 
-        description="아래 **[서버 가입하기]** 버튼을 눌러 서버에 들어온 뒤,\n**[보상 받기]** 버튼을 누르면 정착금 **100,000원**을 준다라!", 
+        description="아래 **[서버 가입하기]** 버튼을 눌러 서버에 들어온 뒤,\n**[보상 받기]** 버튼을 누르면 정착금 **10,000원**을 준다라!", 
         color=0x3498db
     )
     await interaction.response.send_message(embed=embed, view=view)
@@ -1938,4 +1941,4 @@ async def give_gold(interaction: discord.Interaction, 대상: discord.Member, �
 
 client.run(TOKEN)
 
-client.run(TOKEN)
+
