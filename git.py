@@ -114,7 +114,7 @@ PICKAXE_SHOP = {
 CRAFTING_RECIPES = {
     
     "드래곤 링": {"슬라임 점액": 10, "고블린의 뼈": 5, "오크의 이빨": 5,"스켈레톤의 뼈": 5,"드래곤 알": 1},
-    "":{"늑대 가죽":15, "트롤의 피":10}
+    "이프리트의 횟불":{"고블린의 뼈":20,"스켈레톤의 뼈":10,"늑대 가죽":15, "트롤의 피":10}
 }
 
 # [추가] 전리품 아이템 데이터
@@ -1940,5 +1940,6 @@ async def give_gold(interaction: discord.Interaction, 대상: discord.Member, �
     await interaction.response.send_message(embed=embed)
 
 client.run(TOKEN)
+
 
 
